@@ -86,4 +86,8 @@ public class BigIntUtil {
     public static BigInteger randomSignedInt(BigInteger maxAbsoluteValue, SecureRandom random) {
         return BigIntegers.createRandomInRange(maxAbsoluteValue.negate(), maxAbsoluteValue, random);
     }
+
+    public static int roundUpToMultiple(int i, int N) {
+        return (i + (N - 1)) / N * N;
+    }
 }

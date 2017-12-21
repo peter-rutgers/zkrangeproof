@@ -30,10 +30,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/bn256"
 	"github.com/ethereum/go-ethereum/params"
 	"golang.org/x/crypto/ripemd160"
-
-	// Libs added for Zero Knowledge rangeproof:
-	"github.com/ethereum/go-ethereum/byteconversion" 
-	"github.com/ethereum/go-ethereum/zkrangeproof"
 )
 
 // PrecompiledContract is the basic interface for native Go contracts. The implementation
@@ -51,7 +47,6 @@ var PrecompiledContractsHomestead = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{2}): &sha256hash{},
 	common.BytesToAddress([]byte{3}): &ripemd160hash{},
 	common.BytesToAddress([]byte{4}): &dataCopy{},
-	common.BytesToAddress([]byte{9}): &zkpRangeProof{},
 }
 
 // PrecompiledContractsMetropolis contains the default set of pre-compiled Ethereum
@@ -65,7 +60,6 @@ var PrecompiledContractsMetropolis = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{6}): &bn256Add{},
 	common.BytesToAddress([]byte{7}): &bn256ScalarMul{},
 	common.BytesToAddress([]byte{8}): &bn256Pairing{},
-	common.BytesToAddress([]byte{9}): &zkpRangeProof{},
 }
 
 // RunPrecompiledContract runs and evaluates the output of a precompiled contract.
@@ -385,58 +379,4 @@ func (c *bn256Pairing) Run(input []byte) ([]byte, error) {
 		return true32Byte, nil
 	}
 	return false32Byte, nil
-}
-
-
-type zkpRangeProof struct{}
-
-func(c *zkpRangeProof) RequiredGas(input []byte) uint64 {
-	return uint64(180000)
-}
-
-var (
-	errInvalidInputRangeProof = errors.New("invalid input to range proof")
-)
-
-func(c *zkpRangeProof) Run(input []byte) ([]byte, error) {
-	const OFFSET = 4
-
-	if len(input) < OFFSET + 6 * 32 {
-		return nil, errInvalidInputRangeProof
-	}
-
-	lower := new(big.Int).SetBytes(input[4:36])
-	upper := new(big.Int).SetBytes(input[36:68])
-	startProof := new(big.Int).SetBytes(input[100:132]).Int64() + OFFSET
-
-	if startProof <= 164 || startProof + 32 > int64(len(input)) {
-		return nil, errInvalidInputRangeProof
-	}
-
-	commitmentLength := new(big.Int).SetBytes(input[132:164]).Int64()
-	byteArrayCommitment := input[164:startProof]
-	proofLength := new(big.Int).SetBytes(input[startProof:startProof+32]).Int64()
-	byteArrayProof := input[startProof+32:]
-
-	if commitmentLength <= 0 || proofLength <= 0 || commitmentLength > int64(len(byteArrayCommitment)) || proofLength > int64(len(byteArrayProof)) {
-		return nil, errInvalidInputRangeProof
-	}
-
-    // Strip the padding zero bytes at the end, and parse the result
-	parsedCommitment, err := byteconversion.ParseInput(byteArrayCommitment[:commitmentLength])
-
-	if err != nil {
-	    return nil, err
-	}
-
-	parsedProof, err := byteconversion.ParseInput(byteArrayProof[:proofLength])
-
-	if err != nil {
-	    return nil, err
-	}
-
-	if zkrangeproof.ValidateRangeProof(lower, upper, parsedCommitment, parsedProof) {
-    	return true32Byte, nil
-    }
-	return false32Byte, nil	
 }
