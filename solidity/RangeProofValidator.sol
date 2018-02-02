@@ -5,7 +5,7 @@ contract RangeProofValidator {
     int constant t = 128;
     int constant l = 40;
 
-    function validate(uint lower, uint upper, bytes commitment, bytes proof) public constant returns (bool) {
+    function validate(uint lower, uint upper, bytes commitment, bytes proof) public returns (bool) {
         bytes[] memory com = new bytes[](7);
         bytes[] memory prf = new bytes[](31);
         uint[] memory index;
@@ -101,10 +101,6 @@ contract RangeProofValidator {
         if (!validateCFT(prf[30], com[1], com[2], tmp[10], prf[23], prf[15], prf[16], prf[17])) {return false;}
 
         return true;
-    }
-
-    function floorsqrt(uint x, uint y) public view returns (bool) {
-        return validateFloorSqrt(toBigInt(x), toBigInt(y));
     }
 
     function validateFloorSqrt(bytes memory sqrt, bytes memory N) private view returns (bool) {
@@ -261,8 +257,13 @@ contract RangeProofValidator {
         return modexp(x, toBigInt(2), largeN);
     }
 
-    // ab = ((a+b)^2-(a-b)^2) / 4
     function multiply(bytes memory a, bytes memory b) private returns (bytes memory ret) {
+        bytes memory largeN = shiftLeft(a, int(b.length) * 8);
+        return modmul(a, b, largeN);
+    }
+
+    // ab = ((a+b)^2-(a-b)^2) / 4
+    function multiply2(bytes memory a, bytes memory b) private returns (bytes memory ret) {
         bytes memory two = toBigInt(2);
         bytes memory sum = bigadd(a, b); // a+b
         //m1 = sum;
@@ -279,7 +280,7 @@ contract RangeProofValidator {
         ret = shiftLeft(ab4, -2);
     }
 
-    function modmul(bytes memory a, bytes memory b, bytes memory N) private returns (bytes memory ret) {
+    function modmul2(bytes memory a, bytes memory b, bytes memory N) private returns (bytes memory ret) {
         return bmod(multiply(a,b), N);
     }
 
@@ -367,8 +368,16 @@ contract RangeProofValidator {
         return modexp(_x, toBigInt(1), _mod);
     }
 
-    // Wrapper for built-in bigint_modexp, modified from https://gist.github.com/lionello/ee285ea220dc64517499c971ff92a2a5
     function modexp(bytes memory _base, bytes memory _exp, bytes memory _mod) private view returns (bytes memory) {
+        return precompile(_base, _exp, _mod, 0x5);
+    }
+
+    function modmul(bytes memory _base, bytes memory _exp, bytes memory _mod) private view returns (bytes memory) {
+        return precompile(_base, _exp, _mod, 0xb101);
+    }
+
+    // Wrapper for built-in bigint_modexp, modified from https://gist.github.com/lionello/ee285ea220dc64517499c971ff92a2a5
+    function precompile(bytes memory _base, bytes memory _exp, bytes memory _mod, address prec) private view returns (bytes memory) {
 
         uint256 bl = _base.length;
         uint256 el = _exp.length;
@@ -387,7 +396,7 @@ contract RangeProofValidator {
             x := call(450, 0x4, 0, add(_exp,32), el, add(freemem,add(96, bl)), el)
             x := call(450, 0x4, 0, add(_mod,32), ml, add(freemem,sub(inputSize, ml)), ml)
 
-            x := call(sub(gas, 1350), 0x5, 0, freemem, inputSize, add(ret, 32), ml)
+            x := call(sub(gas, 1350), prec, 0, freemem, inputSize, add(ret, 32), ml)
         }
 
         require(rawInput.length == 96 + bl + el + ml);

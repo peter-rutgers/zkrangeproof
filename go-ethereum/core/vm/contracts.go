@@ -22,6 +22,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"math/big"
+	"fmt"
 
 	// Standard Ethereum libs:
 	"github.com/ethereum/go-ethereum/common"
@@ -60,6 +61,7 @@ var PrecompiledContractsMetropolis = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{6}): &bn256Add{},
 	common.BytesToAddress([]byte{7}): &bn256ScalarMul{},
 	common.BytesToAddress([]byte{8}): &bn256Pairing{},
+	common.BytesToAddress([]byte{177, 1}): &bigModMul{},
 }
 
 // RunPrecompiledContract runs and evaluates the output of a precompiled contract.
@@ -223,6 +225,7 @@ func (c *bigModExp) RequiredGas(input []byte) uint64 {
 	if gas.BitLen() > 64 {
 		return math.MaxUint64
 	}
+	fmt.Println("Gas costs = ", gas.Uint64(), " Size = ", len(input))
 	return gas.Uint64()
 }
 
@@ -252,6 +255,70 @@ func (c *bigModExp) Run(input []byte) ([]byte, error) {
 		return common.LeftPadBytes([]byte{}, int(modLen)), nil
 	}
 	return common.LeftPadBytes(base.Exp(base, exp, mod).Bytes(), int(modLen)), nil
+}
+
+// bigModMul implements a native big integer multiplicative modular operation.
+type bigModMul struct{}
+
+var (
+	GMULDIVBASE      = int64(30)
+	GARITHWORD      = int64(6)
+	GQUADDIVISOR      = int64(32)
+/*	big16     = big.NewInt(16)
+	big32     = big.NewInt(32)
+	big64     = big.NewInt(64)
+	big96     = big.NewInt(96)
+	big480    = big.NewInt(480)
+	big1024   = big.NewInt(1024)
+	big3072   = big.NewInt(3072)
+	big199680 = big.NewInt(199680)
+*/)
+
+// RequiredGas returns the gas required to execute the pre-compiled contract.
+func (c *bigModMul) RequiredGas(input []byte) uint64 {
+	var (
+		firstLen  = new(big.Int).SetBytes(getData(input, 0, 32))
+		secondLen = new(big.Int).SetBytes(getData(input, 32, 32))
+		modLen    = new(big.Int).SetBytes(getData(input, 64, 32))
+	)
+
+	// Calculate the gas cost of the operation
+	gasMul := new(big.Int).SetInt64(GMULDIVBASE + GARITHWORD * int64(len(input)) / 32 + firstLen.Int64() * secondLen.Int64() / GQUADDIVISOR)
+	gasMod := new(big.Int).SetInt64(GMULDIVBASE + GARITHWORD * int64(len(input)) / 32 + (firstLen.Int64() + secondLen.Int64()) * modLen.Int64() / GQUADDIVISOR)
+    gas := gasMul.Add(gasMul, gasMod)
+
+	if gas.BitLen() > 64 {
+		return math.MaxUint64
+	}
+	return gas.Uint64()
+}
+
+func (c *bigModMul) Run(input []byte) ([]byte, error) {
+	var (
+		firstLen = new(big.Int).SetBytes(getData(input, 0, 32)).Uint64()
+		secondLen = new(big.Int).SetBytes(getData(input, 32, 32)).Uint64()
+		modLen  = new(big.Int).SetBytes(getData(input, 64, 32)).Uint64()
+	)
+	if len(input) > 96 {
+		input = input[96:]
+	} else {
+		input = input[:0]
+	}
+	// Handle a special case when both the argument and mod length is zero
+	if (firstLen == 0 || secondLen == 0) && modLen == 0 {
+		return []byte{}, nil
+	}
+	// Retrieve the operands and execute the multiplication
+	var (
+		first  = new(big.Int).SetBytes(getData(input, 0, firstLen))
+		second = new(big.Int).SetBytes(getData(input, firstLen, secondLen))
+		mod    = new(big.Int).SetBytes(getData(input, firstLen+secondLen, modLen))
+	)
+	if mod.BitLen() == 0 {
+		// Modulo 0 is undefined, return zero
+		return common.LeftPadBytes([]byte{}, int(modLen)), nil
+	}
+	return common.LeftPadBytes(first.Mod(first.Mul(first, second), mod).Bytes(), int(modLen)), nil
 }
 
 var (

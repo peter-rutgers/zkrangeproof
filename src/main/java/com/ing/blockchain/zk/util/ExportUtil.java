@@ -23,6 +23,7 @@ public class ExportUtil {
     /**
      * Returns the commitment as an string representing an array of big integers.
      */
+    /*
     private static String exportCSV(Commitment commitment) {
         return toCSV(toList(commitment));
     }
@@ -30,7 +31,7 @@ public class ExportUtil {
     private static String exportCSV(BoudotRangeProof p) {
         return toCSV(toList(p));
     }
-
+*/
     // New bigint-array encoding for EVM validator
 
     public static byte[] exportForEVM(Commitment commitment) {
@@ -42,7 +43,7 @@ public class ExportUtil {
     }
 
     // Helper methods
-
+/*
     public static String toCSV(List<BigInteger> ints) {
         int bitlength = 0;
         StringBuilder proofString = new StringBuilder();
@@ -56,7 +57,7 @@ public class ExportUtil {
         System.out.println("Range Proof bitlength = " + bitlength);
         return proofString.toString();
     }
-
+*/
 
     private static List<BigInteger> toList(Commitment commitment) {
         List<BigInteger> ints = new ArrayList<>();
