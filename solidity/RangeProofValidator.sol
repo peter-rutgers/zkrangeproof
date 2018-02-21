@@ -103,10 +103,6 @@ contract RangeProofValidator {
         return true;
     }
 
-    function floorsqrt(uint x, uint y) public view returns (bool) {
-        return validateFloorSqrt(toBigInt(x), toBigInt(y));
-    }
-
     function validateFloorSqrt(bytes memory sqrt, bytes memory N) private view returns (bool) {
         bytes memory sqrtPlus = bigadd(sqrt, toBigInt(1));
         return compare(square(sqrt), N) <= 0 && compare(square(sqrtPlus), N) > 0;
