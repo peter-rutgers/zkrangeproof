@@ -35,7 +35,7 @@ import static java.math.BigInteger.ZERO;
 /**
  * Proof that a commitment contains an integer in [−2^(t+l)*b, 2^(t+l)*b]
  *
- * This protocol is described in section 1.3 in the following paper:
+ * This protocol is described in section 1.2.3 in the following paper:
  * Fabrice Boudot, Efficient Proofs that a Committed Number Lies in an Interval
  */
 public class CFT {
@@ -73,7 +73,7 @@ public class CFT {
 
             // Step 3
             D1 = w.add(c.multiply(x)); // w + cx
-            D2 = n.add(c.multiply(r)); // n1 + C*r1
+            D2 = n.add(c.multiply(r)); // n + cr
         } while (!isValidD1(D1, c, b));
 
         return new CFTProof(C, D1, D2);

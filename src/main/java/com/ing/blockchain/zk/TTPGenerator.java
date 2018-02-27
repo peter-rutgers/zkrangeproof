@@ -41,13 +41,13 @@ public class TTPGenerator {
     public static final int s = 552;
 
     public static TTPMessage generateTTPMessage(BigInteger secretValue) {
-        System.out.println("Generating Secret Order Group.");
+        LOGGER.info("Generating Secret Order Group.");
         SecretOrderGroup group = new SecretOrderGroupGenerator().generate();
         return generateTTPMessage(secretValue, group);
     }
 
     public static TTPMessage generateTTPMessage(BigInteger secretValue, SecretOrderGroup group) {
-        System.out.println("Generating TTP Message");
+        LOGGER.info("Generating TTP Message");
 
         BigInteger secretRandom = TTPGenerator.generateKey(group.getN(), new SecureRandom());
         Commitment commitment = commit(group, secretValue, secretRandom);

@@ -19,12 +19,18 @@
 
 package com.ing.blockchain.zk.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.function.Supplier;
 
 /**
  * Execution time measurement utility class.
  */
 public class TimerUtil {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(TimerUtil.class);
+
     private TimerUtil() {
     }
 
@@ -40,6 +46,6 @@ public class TimerUtil {
     }
 
     private static void logTime(String label, long millisElapsed) {
-        System.out.println(label + " took " + millisElapsed + " milliseconds");
+        LOGGER.info(label + " took " + millisElapsed + " milliseconds");
     }
 }

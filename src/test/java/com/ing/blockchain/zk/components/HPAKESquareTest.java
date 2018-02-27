@@ -17,8 +17,10 @@
  *
  */
 
-package com.ing.blockchain.zk;
+package com.ing.blockchain.zk.components;
 
+import com.ing.blockchain.zk.RangeProofTests;
+import com.ing.blockchain.zk.TTPGenerator;
 import com.ing.blockchain.zk.components.HPAKESquare;
 import com.ing.blockchain.zk.dto.SecretOrderGroup;
 import com.ing.blockchain.zk.dto.SquareProof;

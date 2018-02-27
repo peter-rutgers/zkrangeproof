@@ -17,7 +17,7 @@
  *
  */
 
-package com.ing.blockchain.zk;
+package com.ing.blockchain.zk.components;
 
 import com.ing.blockchain.zk.components.SecretOrderGroupGenerator;
 import com.ing.blockchain.zk.dto.SecretOrderGroup;

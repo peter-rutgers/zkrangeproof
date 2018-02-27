@@ -1,20 +1,20 @@
 ## Zero Knowledge Range Proof
 
-ING's zero knowledge range-proof precompiled contract for the go-ethereum client.
+ING's zero knowledge range proof contract for Ethereum. This version is based on the Byzantium precompiles.
 
 ## Important note:
 
-The original version of this library implemented the whitepaper “An Efficient Range Proof Scheme” by Kun Peng and Feng Bao. As discovered by Madars Virza, Research Scientist at MIT Media Lab, this protocol contains a potential security vulnerability.
+The initial version of this library implemented the whitepaper “An Efficient Range Proof Scheme” by Kun Peng and Feng Bao. As discovered by Madars Virza, Research Scientist at MIT Media Lab, this protocol contains a potential security vulnerability.
 
 *“The publicly computable value y/t is roughly the same magnitude (in expectation) as w^2 \* (m-a+1)(b-m+1). However, w^2 has fixed bit length (again, in expectation) and thus for a fixed range, this value leaks the magnitude of the committed value.”*
 
 Therefore, the proof is not zero knowledge. We’re currently evaluating which protocol to use instead in order to provide a secure Zero Knowledge Proof protocol.
 
-The current implementation is based on one of the papers we are considering, "Efficient Proofs that a Committed Number Lies in an Interval" by Fabrice Boudot.
+The current implementation is one of the options we are considering, based on the paper "Efficient Proofs that a Committed Number Lies in an Interval" by Fabrice Boudot.
 
 ## Intro
 
-One fundamental concern in blockchain technology is the confidentiality of the data on the blockchain. In order to reach consensus between all independent nodes in a blockchain network, each node must be able to validate all transactions (for instance against double-spent), in most cases this means that the content of the transactions is visible to all nodes. Fortunately several solutions exist that preserve confidentiality on a blockchain (private transactions, HyperLedger Fabric Channels, Payment Channels, Homomorphic encryption, transaction-mixing, zero knowledge proofs etc.). This article describes the implementation of a zero-knowledge range-proof in Ethereum.
+One fundamental concern in blockchain technology is the confidentiality of the data on the blockchain. In order to reach consensus between all independent nodes in a blockchain network, each node must be able to validate all transactions (for instance against double-spend), in most cases this means that the content of the transactions is visible to all nodes. Fortunately several solutions exist that preserve confidentiality on a blockchain (private transactions, HyperLedger Fabric Channels, Payment Channels, Homomorphic encryption, transaction-mixing, zero knowledge proofs etc.). This article describes the implementation of a zero knowledge range proof in Ethereum.
 
 The zero knowledge range proof allows the blockchain network to validate that a secret number is within known limits without disclosing the secret number. This is useful to reach consensus in a variety of use cases:
 
@@ -22,7 +22,7 @@ The zero knowledge range proof allows the blockchain network to validate that a 
  * Validate that someone is in Europe without disclosing the exact location.
  * Validate that a payment-amount is positive without disclosing the amount (as done by Monero).
 
-The zero-knowledge range-proof requires a commitment on a number by a trusted party (for instance a government committing on someone's age), an Ethereum-user can use this commitment to generate a range-proof. The Ethereum network will verify this proof.
+The zero knowledge range proof requires a commitment on a number by a trusted party (for instance a government committing on someone's age), an Ethereum user can use this commitment to generate a range proof. The Ethereum network will verify this proof.
 
 
 ## Precompiled contract
@@ -31,10 +31,7 @@ The range proof consists of 2 parts:
  * Generating the proof that a number is within an interval (outside the blockchain by the client that submits that proof)
  * Validating the proof that this number is within that interval (executed by each validating node on the blockchain)
 
-On Ethereum validation of transactions in smart contract logic is typically done in the Ethereum Virtual Machine. However the operations involved in the validation of this range-proof are too computationally expensive to run on the EVM. Therefore we validate the range proof in a precompiled contract. We added this precompiled contract to the Ethereum Go Client (Geth).  A precompiled contract is written in the native language of the Ethereum-client (in our case in Golang) and is preconfigured to live at a specific address (with a low number). The precompiled contract can be called from Solidity in 2 ways:
-
- * By referring to the address with a Solidity interface (works until Solidity 0.3.6. and requires the address to have a balance of at least one wei (preconfigured in the genesis block)).
- * By extending the Solidity language to include additional functions in which case the Solidity code will be compiled to call the precompiled smart contract at the same preconfigured address.
+On Ethereum validation of transactions in smart contract logic is typically done in the Ethereum Virtual Machine. However the operations involved in the validation of this range-proof are too computationally expensive to run on the EVM. Therefore we call a precompiled contract during verification. A precompiled contract is written in the native language of the Ethereum-client (in our case in Golang) and is preconfigured to live at a specific address (with a low number). In our case we use the precompile bigModExp at address 0x5, which is available in Ethereum since the Byzantium release.
 
  ## Gas consumption
 
@@ -42,36 +39,26 @@ On Ethereum validation of transactions in smart contract logic is typically done
 
  Gas limit is there to protect you from buggy code running until your funds are depleted. The product of gasPrice and gas represents the maximum amount of Wei that you are willing to pay for executing the transaction. What you specify as gasPrice is used by miners to rank transactions for inclusion in the blockchain. It is the price in Wei of one unit of gas, in which VM operations are priced.
 
-
-
- Determining the right gas-consumption is crucial for correct functioning of Ethereum. Too low gas introduces a DOS vulnerability, attackers can make the network slow by calling computationally hard functions while paying relatively little. Too high gas wastes people’s money.
-
-
- We benchmarked the zkRangeProof verification against various other built-in Ethereum functions which resulted in a gas-consumption of 180,000.
-
+ The current implementation is not yet optimized for gas usage, the verification costs are around 3 million gas. On private networks this is usually not an issue, but it may be too expensive in the Ethereum mainnet.
 
 ## Usage
 
 The usage of this go-ethereum library consists of four parts:
-1. Running a modified ethereum Geth client that contains the precompiled smart contract;
+1. Running an Ethereum client with a chain that enables the Byzantium precompiles;
 2. Generating a commitment (in Java);
 3. Generating a range proof (in Java);
-4. Validating range proofs with the precompiled smart contract (in Java, uPort, or via console).
+4. Validating range proofs with the Solidity smart contract (connecting from Java, uPort, or via console).
 
 We will describe each step in more detail below. We have tried to make these instructions accessible for a broad audience.
 
-#### Setting up the modified Geth client
+#### Running the Ethereum client
 
-Make sure that you have `make`, `golang-go`, and `gradle` installed. For `gradle`, this ppa can be used: `ppa:cwchien/gradle`.
+Make sure that you have `geth` installed. If not, follow the instructions on https://github.com/ethereum/go-ethereum/wiki/Building-Ethereum
 
-Clone this repository, navigate to the go-ethereum folder and run:
+From the zkrangeproof working directory, you can initialize a private chain using the provided `genesis.json` file, for example:
 ```
-$ make geth
-```
-
-You can now use the modified Geth client. From the zkrangeproof folder, use
-```
-$ ./go-ethereum/build/bin/geth
+geth init ./data/genesis.json
+geth --targetgaslimit 99900000000 --networkid 15997 --rpc --rpcaddr 0.0.0.0 --rpcport 8545 --rpccorsdomain "*"
 ```
 
 #### Generating commitments
@@ -129,25 +116,13 @@ And can directly be verified by:
 RangeProof.validateRangeProof(rangeProof, ttpMessage.getCommitment(), range);
 ```
 
-The range proof consists of 18 variables. They can be retrieved by using the following getters:
-- `rangeProof.getCLeftSquare()`
-- `rangeProof.getCRightSquare()`
-- `rangeProof.getSqrProofLeft().getF()`
-- `rangeProof.getSqrProofLeft().getECProof().getC()`
-- `rangeProof.getSqrProofLeft().getECProof().getD()`
-- `rangeProof.getSqrProofLeft().getECProof().getD1()`
-- `rangeProof.getSqrProofLeft().getECProof().getD2()`
-- `rangeProof.getSqrProofRight().getF()`
-- `rangeProof.getSqrProofRight().getECProof().getC()`
-- `rangeProof.getSqrProofRight().getECProof().getD()`
-- `rangeProof.getSqrProofRight().getECProof().getD1()`
-- `rangeProof.getSqrProofRight().getECProof().getD2()`
-- `rangeProof.getCftProofLeft().getC()`
-- `rangeProof.getCftProofLeft().getD1()`
-- `rangeProof.getCftProofLeft().getD2()`
-- `rangeProof.getCftProofRight().getC()`
-- `rangeProof.getCftProofRight().getD1()`
-- `rangeProof.getCftProofRight().getD2()`
+The range proof can be exported for the Solidity contract using the provided ExportUtils:
+```java
+ExportUtil.exportForEVM(commitment))
+
+        System.out.println("Proof = ");
+        System.out.println(DatatypeConverter.printHexBinary(ExportUtil.exportForEVM(rangeProof, commitment, range)));
+```
 
 In the precompiled smart contract we expect the range proof to be the above variables (in this order), separated by commas.
 

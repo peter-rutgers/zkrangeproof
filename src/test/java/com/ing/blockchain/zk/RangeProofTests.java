@@ -29,7 +29,7 @@ import static junit.framework.TestCase.fail;
 
 public class RangeProofTests {
 
-    static final SecretOrderGroup EXAMPLE_GROUP = new SecretOrderGroup(
+    public static final SecretOrderGroup EXAMPLE_GROUP = new SecretOrderGroup(
             new BigInteger("123763483659823661164839153854113"),
             new BigInteger("9978076495933337078596144096749"),
             new BigInteger("46959937887401751832025265468109"));
